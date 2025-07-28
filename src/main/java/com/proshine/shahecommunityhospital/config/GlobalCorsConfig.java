@@ -13,6 +13,7 @@ public class GlobalCorsConfig implements WebMvcConfigurer {
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
 		registry.addMapping("/**")
+				// 修复方案1：使用 allowedOriginPatterns 替代 allowedOrigins
 				.allowedOriginPatterns("*")
 				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 				.allowedHeaders("*")

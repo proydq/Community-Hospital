@@ -1,6 +1,9 @@
 package com.proshine.shahecommunityhospital.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.proshine.shahecommunityhospital.common.ResponseEntity;
+import com.proshine.shahecommunityhospital.config.mqtt.MqttCmd;
+import com.proshine.shahecommunityhospital.config.mqtt.MqttGateway;
 import com.proshine.shahecommunityhospital.dto.*;
 import com.proshine.shahecommunityhospital.service.MedicalService;
 import lombok.extern.slf4j.Slf4j;
@@ -18,12 +21,14 @@ import javax.validation.Valid;
 @RestController
 @RequestMapping("/thirdpart/medical")
 @Slf4j
-@CrossOrigin(origins = "*")
 public class MedicalController {
     
     @Autowired
     private MedicalService medicalService;
-    
+
+    @Autowired
+    private MqttGateway mqttGateway;
+
     /**
      * 收费按钮点击接口
      * 当点击收费按钮时接收所传参数
@@ -41,7 +46,8 @@ public class MedicalController {
                     request.getPaidUp());
             
             medicalService.handleChargeButtonClick(request);
-            
+            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
+                    "CHARGE_BUTTON_CLICK")));
             log.info("收费按钮点击处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -70,7 +76,8 @@ public class MedicalController {
                     request.getPaidUp());
             
             medicalService.confirmPayment(request);
-            
+            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
+                    "CONFIRM_PAYMENT")));
             log.info("确认收费处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -99,7 +106,8 @@ public class MedicalController {
                     request.getRealRefundAmount());
             
             medicalService.handleRefundButtonClick(request);
-            
+            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
+                    "REFUND_BUTTON_CLICK")));
             log.info("退费按钮点击处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -128,7 +136,8 @@ public class MedicalController {
                     request.getRealRefundAmount());
             
             medicalService.confirmRefund(request);
-            
+            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
+                    "CONFIRM_REFUND")));
             log.info("确认退费处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {

@@ -5,12 +5,17 @@ import com.proshine.shahecommunityhospital.common.ResponseEntity;
 import com.proshine.shahecommunityhospital.config.mqtt.MqttCmd;
 import com.proshine.shahecommunityhospital.config.mqtt.MqttGateway;
 import com.proshine.shahecommunityhospital.dto.*;
+import com.proshine.shahecommunityhospital.entity.TbTerminal;
+import com.proshine.shahecommunityhospital.service.ITbTerminalService;
 import com.proshine.shahecommunityhospital.service.MedicalService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * 医疗收费系统控制器
@@ -29,6 +34,9 @@ public class MedicalController {
     @Autowired
     private MqttGateway mqttGateway;
 
+    @Autowired
+    private ITbTerminalService tbTerminalService;
+
     /**
      * 收费按钮点击接口
      * 当点击收费按钮时接收所传参数
@@ -44,10 +52,9 @@ public class MedicalController {
                     request.getIdentityCardNumber(),
                     request.getReceivable(),
                     request.getPaidUp());
-            
             medicalService.handleChargeButtonClick(request);
-            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
-                    "CHARGE_BUTTON_CLICK")));
+            // 发送消息指令
+            sendToMqtt(request.getWindowId(),"CHARGE_BUTTON_CLICK");
             log.info("收费按钮点击处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -58,7 +65,9 @@ public class MedicalController {
             return ResponseEntity.fail("收费按钮点击处理失败: " + e.getMessage());
         }
     }
-    
+
+
+
     /**
      * 确认收费接口
      * 当点击收费的确认按钮时接收所传参数
@@ -74,10 +83,9 @@ public class MedicalController {
                     request.getIdentityCardNumber(),
                     request.getReceivable(),
                     request.getPaidUp());
-            
             medicalService.confirmPayment(request);
-            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
-                    "CONFIRM_PAYMENT")));
+            // 发送消息指令
+            sendToMqtt(request.getWindowId(),"CONFIRM_PAYMENT");
             log.info("确认收费处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -104,10 +112,9 @@ public class MedicalController {
                     request.getIdentityCardNumber(),
                     request.getReceivable(),
                     request.getRealRefundAmount());
-            
             medicalService.handleRefundButtonClick(request);
-            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
-                    "REFUND_BUTTON_CLICK")));
+            // 发送消息指令
+            sendToMqtt(request.getWindowId(),"REFUND_BUTTON_CLICK");
             log.info("退费按钮点击处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -134,10 +141,9 @@ public class MedicalController {
                     request.getIdentityCardNumber(),
                     request.getReceivable(),
                     request.getRealRefundAmount());
-            
             medicalService.confirmRefund(request);
-            mqttGateway.sendToMqtt("bt_client/2140864780", 1, JSON.toJSONString(MqttCmd.create("ServiceMedical",
-                    "CONFIRM_REFUND")));
+            // 发送消息指令
+            sendToMqtt(request.getWindowId(),"CONFIRM_REFUND");
             log.info("确认退费处理成功 - 患者: {}", request.getName());
             return ResponseEntity.success(null);
         } catch (IllegalArgumentException e) {
@@ -146,6 +152,28 @@ public class MedicalController {
         } catch (Exception e) {
             log.error("确认退费处理失败 - 患者: {}", request.getName(), e);
             return ResponseEntity.fail("确认退费处理失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 发送消息指令
+     *
+     * @param windowId 窗口id
+     * @param message 指令
+     */
+    private void sendToMqtt(String windowId, String message) {
+        List<TbTerminal> terminalList = tbTerminalService.findByExtraId2(windowId);
+        if(!CollectionUtils.isEmpty(terminalList)){
+            for (TbTerminal tbTerminal : terminalList) {
+                if (StringUtils.hasText(tbTerminal.getTerminalId())) {
+                    try {
+                        mqttGateway.sendToMqtt("bt_client/" + tbTerminal.getTerminalId(),
+                                1, JSON.toJSONString(MqttCmd.create("ServiceMedical", message)));
+                    }catch (Exception e){
+                        log.error(e.getMessage());
+                    }
+                }
+            }
         }
     }
 }
